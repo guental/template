@@ -1,0 +1,88 @@
+#!/bin/sh
+{
+
+show_help() {
+echo "Usage: ${name:-"${0##*"/"}"} [COMMAND]
+Example description.
+
+  -h, --help
+        display this help and exit
+      --version
+        output version information and exit"
+}
+
+process() {
+local "LC_ALL" "LANG" "IFS" "line"
+LC_ALL=C
+LANG=C
+IFS=""
+while read -r "line"; do
+	case "${line}" in
+		'example')
+			continue
+		;;
+		"${name:-"${0##*"/"}"}: exit code: "[0-9]*)
+			code="${line##*": "}"
+			break
+		;;
+		*)
+			echo "${line}"
+			code=1			
+		;;
+	esac
+done
+}
+
+main() {
+local "name" "code" "version"
+name="Example"
+version="1.0.0"
+case "${#},${1:-""},${2:-""}" in
+	0,,)
+		:
+	;;
+	"1,-,"|"1,--,"|"1,/dev/stdin,"|"1,--,")
+		shift 1
+	;;
+	"2,--,-"|"2,--,/dev/stdin")
+		shift 2
+	;;
+	"1,-h,"|"1,--h,"|"1,--help,"|"2,-h,--"|"2,--h,--"|"2,--help,--")
+		show_help
+		exit 0
+	;;
+	"1,--version,"|"2,--version,--")
+		echo "${name:-"${0##*"/"}"} ${version:-"1.0.0"}"
+		exit 0
+	;;
+	*,--,*)
+		shift 1
+	;;
+	*,-*)
+		show_help 1>&2
+		exit 1
+	;;
+esac
+case "${1:-""}" in
+	"")
+		process
+	;;
+	*)
+		if type "${1}" >/dev/null 2>&1; then
+			{ command -- "${@}"; echo "${name:-"${0##*"/"}"}: exit code: ${?:-"1"}"; } | process
+		else
+			echo "${name:-"${0##*"/"}"}: ${1}: command not found"
+			code=127
+		fi
+	;;
+esac
+exit "${code:-"0"}"
+}
+
+echo() {
+printf -- '%s\n' "${*}"
+}
+
+main "${@}"
+exit 1
+}

@@ -1,0 +1,302 @@
+#!/bin/bash
+{
+set +H
+
+function show_help() {
+echo "Usage: ${name:-"${0##*"/"}"} [OPTION]... [FILE]...
+Example description.
+
+  -h, --help
+        display this help and exit
+      --version
+        output version information and exit
+  -q, --quiet
+        quiet mode"
+exit "${1:-"0"}"
+}
+
+function process() {
+if ! [[ -d "${1}" ]]; then
+	say "${1}"
+else
+	echoerr "${1}: Is a directory"
+	sayerr "${1}"
+fi
+}
+
+function main() {
+local "name" "version" "read_stdin"
+name="Example"
+version="1.0.0"
+read_stdin="no"
+pkgchk "example"
+setopt "${@}"
+}
+
+function echo() {
+printf -- '%s\n' "${*}"
+}
+
+function echon() {
+printf -- '%s' "${*}"
+}
+
+function echoe() {
+local "line"
+printf -v "line" -- '%b' "${*}"
+printf -- '%s\n' "${line//[[:cntrl:]]}"
+}
+
+function echone() {
+local "line"
+printf -v "line" -- '%b' "${*}"
+printf -- '%s' "${line//[[:cntrl:]]}"
+}
+
+function echoerr() {
+printf -- '%s\n' "${name:-"${0##*"/"}"}: ${*//"/dev/stdin"/"'standard input'"}" 1>&2
+}
+
+function print() {
+printf -- '%s\n' "${@}"
+}
+
+function say() {
+if [[ -e "${*}" ]]; then
+	printf -- '%s\n' "${*//"/dev/stdin"/"-"}: OK"
+else
+	printf -- '%s\n' "${*//"/dev/stdin"/"-"}"
+fi
+}
+
+function sayn() {
+if [[ -e "${*}" ]]; then
+	printf -- '%s' "${*//"/dev/stdin"/"-"}: OK"
+else
+	printf -- '%s' "${*//"/dev/stdin"/"-"}"
+fi
+}
+
+function saye() {
+local "line"
+printf -v "line" -- '%b' "${*//"/dev/stdin"/"-"}"
+line="${line//[[:cntrl:]]}"
+if [[ -e "${line}" ]]; then
+	printf -- '%s\n' "${line}: OK"
+else
+	printf -- '%s\n' "${line}"
+fi
+}
+
+function sayne() {
+local "line"
+printf -v "line" -- '%b' "${*//"/dev/stdin"/"-"}"
+line="${line//[[:cntrl:]]}"
+if [[ -e "${line}" ]]; then
+	printf -- '%s' "${line}: OK"
+else
+	printf -- '%s' "${line}"
+fi
+}
+
+function sayerr() {
+if [[ -e "${*}" ]]; then
+	printf -- '%s\n' "${*//"/dev/stdin"/"-"}: FAILED"
+else
+	printf -- '%s\n' "${*//"/dev/stdin"/"-"}"
+fi
+code=1
+}
+
+function pkgchk() {
+local "readable" "built_in" "coreutils" "moreutils" "list"
+case "${#}" in
+	0)
+		return 0
+	;;
+esac
+built_in=(
+"." "cd" "echo" "getopts" "mapfile" "set" "type" ":" "command" "enable" "hash" "popd" "shift"
+"typeset" "[" "[[" "compgen" "eval" "help" "printf" "shopt" "ulimit" "alias" "complete" "exec"
+"history" "pushd" "source" "umask" "bg" "compopt" "exit" "jobs" "pwd" "suspend" "unalias" "bind"
+"continue" "export" "kill" "read" "test" "unset" "break" "declare" "false" "let" "readarray"
+"times" "wait" "builtin" "dirs" "fc" "local" "readonly" "trap" "caller" "disown" "fg" "logout"
+"return" "true"
+)
+coreutils=(
+"arch" "b2sum" "base64" "basename" "cat" "chcon" "chgrp" "chmod" "chown" "chroot" "cksum" "comm"
+"cp" "csplit" "cut" "date" "dd" "df" "dir" "dircolors" "dirname" "du" "echo" "env" "expand" "expr"
+"factor" "false" "flock" "fmt" "fold" "groups" "head" "hostid" "id" "install" "join" "link" "ln"
+"logname" "ls" "md5sum" "mkdir" "mkfifo" "mknod" "mktemp" "mv" "nice" "nl" "nohup" "nproc" "numfmt"
+"od" "paste" "pathchk" "pinky" "pr" "printenv" "printf" "ptx" "pwd" "readlink" "realpath" "rm"
+"rmdir" "runcon" "sha1sum" "sha256sum" "sha224sum" "sha384sum" "sha512sum" "seq" "shred" "sleep"
+"sort" "split" "stat" "stty" "sum" "sync" "tac" "tail" "tee" "test" "timeout" "touch" "tr" "true"
+"truncate" "tsort" "tty" "uname" "unexpand" "uniq" "unlink" "users" "vdir" "wc" "who" "whoami"
+"yes"
+)
+moreutils=(
+"chronic" "combine" "errno" "ifdata" "ifne" "isutf8" "lckdo" "mispipe" "pee" "sponge" "ts" "vidir"
+"vipe" "zrun"
+)
+readarray -t "readable" < <(
+local "arg" "list" "is_coreutils" "is_moreutils" "full_list"
+for arg in "${@}"; do
+	if [[ "${built_in[@]}" =~ "${arg:-""}" ]]; then
+		continue
+	elif [[ "${coreutils[@]}" =~ "${arg:-""}" ]]; then
+		is_coreutils=1
+	elif [[ "${moreutils[@]}" =~ "${arg:-""}" ]]; then
+		is_moreutils=1
+	else
+		case "${arg:-""}" in
+			""|"example")
+				continue
+			;;
+			*)
+				list+=( "${arg}" )
+			;;
+		esac
+	fi
+done
+case "${is_coreutils:-"0"}" in
+	1)
+		full_list+=( "coreutils" )
+	;;
+esac
+case "${is_moreutils:-"0"}" in
+	1)
+		full_list+=( "moreutils" )
+	;;
+esac
+full_list+=( "${list[@]}" )
+case "${#full_list[@]}" in
+	0)
+		return 0
+	;;
+	*)
+		printf -- '%s\n' "${full_list[@]}"
+	;;
+esac
+)
+case "${#readable[@]}" in
+	0)
+		return 0
+	;;
+esac
+readarray -t "list" < <( command -v -- "${@}" )
+case "${#}" in
+	"${#list[@]}"|0)
+		return 0
+	;;
+	*)
+		echo "${name:-"${0##*"/"}"}: please install: ${readable[*]}"
+		exit 1
+	;;
+esac
+}
+
+function setdat() {
+local "setdat_datalist" "setdat_msgr" "setdat_msgn" "setdat_data"
+setdat_msgr="Permission denied"
+setdat_msgn="No such file or directory"
+setdat_data="${1}"
+case "${setdat_data}" in
+	"-")
+		setdat_data="/dev/stdin"
+	;;
+esac
+if [[ -e "${setdat_data}" ]]; then
+	if [[ -r "${setdat_data}" ]]; then
+		process "${setdat_data}"
+	else
+		printf -- '%s\n' "${name:-"${0##*"/"}"}: ${setdat_data}: ${setdat_msgr}" 1>&2
+		code=1
+	fi
+else
+	printf -- '%s\n' "${name:-"${0##*"/"}"}: ${setdat_data}: ${setdat_msgn}" 1>&2
+	code=1
+fi
+}
+
+function setopt() {
+local "OPT" "OPTARG" "OPTERR" "OPTIND" "QUIET" "argv" "argc" "arg" "code"
+OPTIND=1
+OPTERR=0
+argv=()
+argc=0
+while getopts "hq-:" OPT; do
+	case "${OPT}" in
+		h)
+			show_help
+		;;
+		q)
+			QUIET=1
+		;;
+		-)
+			case "${OPTARG}" in
+				h|help)
+					show_help
+				;;
+				version)
+					echo "${name:-"${0##*"/"}"} ${version:-"1.0.0"}"
+					exit 0
+				;;
+				q|quiet)
+					QUIET=1
+				;;
+				*)
+					show_help 1 1>&2
+				;;
+			esac
+		;;
+		*)
+			show_help 1 1>&2
+		;;
+	esac
+done
+(( OPTDEL = OPTIND - 1 ))
+shift "${OPTDEL:-"0"}"
+unset "OPT" "OPTARG" "OPTERR" "OPTIND"
+OPTIND=1
+OPTERR=1
+case "${QUIET:-"0"}" in
+	1)
+		exec &>/dev/null
+	;;
+esac
+case "${#}" in
+	0)
+		read_stdin="${read_stdin:-"0"}"
+		case "${read_stdin,,}" in
+			1|"y"|"yes"|"true"|"allow")
+				argv=( "/dev/stdin" )
+			;;
+			0|"n"|"no"|"nope"|"false"|"disable")
+				argv=()
+			;;
+			*)
+				printf -v "read_stdin" -- '%q' "${read_stdin}"
+				echoerr "read_stdin: ${read_stdin}: Is not a legal value"
+				exit 1
+			;;
+		esac
+	;;
+	*)
+		argv=( "${@}" )
+		argv=( "${argv[@]/#"file://"}" )
+		while [[ "${argv[*]}" =~ // ]]; do
+			argv=( "${argv[@]//"//"/"/"}" )
+		done
+		argv=( "${argv[@]/%"/"}" )
+	;;
+esac
+argc="${#argv[@]}"
+for arg in "${argv[@]}"; do
+	setdat "${arg}"
+done
+exit "${code:-"0"}"
+}
+
+main "${@//["\$\`\\"]}"
+exit 1
+}
